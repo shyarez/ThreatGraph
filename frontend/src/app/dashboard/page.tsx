@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, BookOpen, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Callout, Empty, PageHeader, Stat } from "@/components/common";
+import { Callout, Empty, PageHeader } from "@/components/common";
 import { RunStatusBadge } from "@/components/run-status";
 import { OverviewTab } from "@/components/run/overview-tab";
 import { api, type Results, type Run } from "@/lib/api";
@@ -82,19 +82,23 @@ export default function Dashboard() {
             <CardTitle>Recent runs</CardTitle>
             <CardDescription>{runs.length} total</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {runs.slice(0, 8).map((r) => (
-              <Link key={r.id} href={`/runs/${r.id}`} className="rounded-lg border p-3 transition-colors hover:bg-accent/40">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm">{r.id}</span>
-                  <RunStatusBadge status={r.status} />
+              <Link
+                key={r.id}
+                href={`/runs/${r.id}`}
+                className="flex min-w-0 flex-col gap-2 rounded-lg border p-3 transition-colors hover:bg-accent/40"
+              >
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                  <span className="truncate font-mono text-sm">{r.id}</span>
+                  <span className="shrink-0"><RunStatusBadge status={r.status} /></span>
                 </div>
-                <div className="mt-1 truncate text-xs text-muted-foreground">{r.dataset_name}</div>
+                <div className="truncate text-xs text-muted-foreground" title={r.dataset_name ?? undefined}>{r.dataset_name}</div>
                 {r.summary && (
-                  <div className="mt-2 grid grid-cols-3 gap-1 text-xs">
-                    <Stat label="flagged" value={<span className="text-sm">{fmtInt(r.summary.flagged)}</span>} />
-                    <Stat label="comms" value={<span className="text-sm">{fmtInt(r.summary.n_communities)}</span>} />
-                    <Stat label="investigate" value={<span className="text-sm">{fmtInt(r.summary.investigate)}</span>} tone="danger" />
+                  <div className="grid grid-cols-3 divide-x divide-border rounded-md border bg-background/30">
+                    <MiniStat label="Flagged" value={fmtInt(r.summary.flagged)} />
+                    <MiniStat label="Comms" value={fmtInt(r.summary.n_communities)} />
+                    <MiniStat label="Investigate" value={fmtInt(r.summary.investigate)} danger />
                   </div>
                 )}
               </Link>
@@ -103,5 +107,14 @@ export default function Dashboard() {
         </Card>
       )}
     </>
+  );
+}
+
+function MiniStat({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
+  return (
+    <div className="min-w-0 px-2 py-1.5 text-center">
+      <div className="truncate text-[10px] uppercase tracking-wide text-muted-foreground" title={label}>{label}</div>
+      <div className={`truncate text-sm font-semibold tabular-nums ${danger ? "text-red-400" : ""}`}>{value}</div>
+    </div>
   );
 }
