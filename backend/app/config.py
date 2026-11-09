@@ -13,7 +13,7 @@ DB_PATH = DATA_DIR / "threatgraph.db"
 for _d in (DATA_DIR, UPLOAD_DIR, RUNS_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
-MAX_UPLOAD_BYTES = int(os.environ.get("THREATGRAPH_MAX_UPLOAD_MB", "1024")) * 1024 * 1024
+MAX_UPLOAD_BYTES = int(os.environ.get("THREATGRAPH_MAX_UPLOAD_MB", "3072")) * 1024 * 1024
 
 DEFAULT_PARAMS: dict = {
     # Row cap applied before analysis (random sample, fixed seed). None = use every row.
