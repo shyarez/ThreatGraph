@@ -90,7 +90,7 @@ export default function DatasetsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Add dataset</CardTitle>
-              <CardDescription>CSV with flow features; IP and timestamp columns enable graph analysis.</CardDescription>
+              <CardDescription>CSV or Parquet with flow features; IP and timestamp columns enable graph analysis.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
               <div
@@ -112,11 +112,11 @@ export default function DatasetsPage() {
                 )}
               >
                 {busy === "upload" ? <Loader2 className="size-6 animate-spin" /> : <FileUp className="size-6 text-sky-400" />}
-                <div>{busy === "upload" ? "Uploading & validating…" : "Drop a CSV here or click to browse"}</div>
+                <div>{busy === "upload" ? "Uploading & validating…" : "Drop a CSV or Parquet file here or click to browse"}</div>
                 <input
                   ref={fileRef}
                   type="file"
-                  accept=".csv"
+                  accept=".csv,.parquet,.pq"
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0];

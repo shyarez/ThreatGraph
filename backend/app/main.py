@@ -72,7 +72,8 @@ def _register_file(path: Path, name: str, filename: str) -> dict:
         df = ingest.read_csv(path)
     except Exception as exc:
         path.unlink(missing_ok=True)
-        raise HTTPException(400, f"Could not parse CSV: {exc}")
+        kind = "Parquet" if ingest.is_parquet(path) else "CSV"
+        raise HTTPException(400, f"Could not parse {kind}: {exc}")
     profile = clean(ingest.profile_dataset(df))
     if not profile["valid"]:
         path.unlink(missing_ok=True)
@@ -83,8 +84,8 @@ def _register_file(path: Path, name: str, filename: str) -> dict:
 
 @app.post("/api/datasets")
 async def upload_dataset(file: UploadFile = File(...), name: str | None = Form(None)):
-    if not file.filename or not file.filename.lower().endswith(".csv"):
-        raise HTTPException(400, "Please upload a .csv file.")
+    if not file.filename or not file.filename.lower().endswith(ingest.SUPPORTED_EXTENSIONS):
+        raise HTTPException(400, "Please upload a .csv or .parquet file.")
     dest = UPLOAD_DIR / f"{db.new_id()}_{Path(file.filename).name}"
     size = 0
     with open(dest, "wb") as fh:

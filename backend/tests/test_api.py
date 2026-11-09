@@ -86,3 +86,23 @@ def test_notes_and_reports(client, completed_run):
 def test_sample_endpoint(client):
     r = client.post("/api/datasets/sample", json={"n_benign": 2000})
     assert r.status_code == 200 and r.json()["profile"]["valid"]
+
+
+def test_upload_parquet(client, sample_csv, tmp_path):
+    from app.pipeline import ingest
+
+    pq_path = tmp_path / "sample.parquet"
+    ingest.read_csv(sample_csv).to_parquet(pq_path, index=False)
+    with open(pq_path, "rb") as fh:
+        r = client.post("/api/datasets", files={"file": ("sample.parquet", fh, "application/octet-stream")})
+    assert r.status_code == 200, r.text
+    ds = r.json()
+    assert ds["profile"]["graph_capable"]
+    preview = client.get(f"/api/datasets/{ds['id']}/preview", params={"rows": 5}).json()
+    assert len(preview["rows"]) == 5
+    client.delete(f"/api/datasets/{ds['id']}")
+
+
+def test_upload_rejects_other_extensions(client):
+    r = client.post("/api/datasets", files={"file": ("data.xlsx", b"x", "application/octet-stream")})
+    assert r.status_code == 400

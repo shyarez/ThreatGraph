@@ -34,17 +34,46 @@ def normalise_name(name: str) -> str:
     return re.sub(r"[\s_]+", " ", str(name).strip().lower())
 
 
+SUPPORTED_EXTENSIONS = (".csv", ".parquet", ".pq")
+
+
+def is_parquet(path: str | Path) -> bool:
+    return str(path).lower().endswith((".parquet", ".pq"))
+
+
+def _read_parquet(path: str | Path, nrows: int | None) -> pd.DataFrame:
+    if nrows is None:
+        return pd.read_parquet(path)
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    # Read only the first batch(es) so previews of large files stay cheap.
+    batches, got = [], 0
+    pf = pq.ParquetFile(path)
+    for batch in pf.iter_batches(batch_size=max(nrows, 1)):
+        batches.append(batch)
+        got += batch.num_rows
+        if got >= nrows:
+            break
+    if not batches:
+        return pf.schema_arrow.empty_table().to_pandas()
+    return pa.Table.from_batches(batches).to_pandas().head(nrows)
+
+
 def read_csv(path: str | Path, nrows: int | None = None) -> pd.DataFrame:
-    """Read a CSV robustly: tolerant of bad bytes and stray whitespace."""
-    df = pd.read_csv(
-        path,
-        nrows=nrows,
-        low_memory=False,
-        skipinitialspace=True,
-        encoding="utf-8",
-        encoding_errors="replace",
-        on_bad_lines="skip",
-    )
+    """Read a flow dataset (CSV or Parquet) robustly: tolerant of bad bytes and stray whitespace."""
+    if is_parquet(path):
+        df = _read_parquet(path, nrows)
+    else:
+        df = pd.read_csv(
+            path,
+            nrows=nrows,
+            low_memory=False,
+            skipinitialspace=True,
+            encoding="utf-8",
+            encoding_errors="replace",
+            on_bad_lines="skip",
+        )
     df.columns = [str(c).strip() for c in df.columns]
     # CIC-IDS2017 duplicates "Fwd Header Length"; pandas renames it ".1" — harmless.
     df = df.loc[:, ~df.columns.duplicated()]
