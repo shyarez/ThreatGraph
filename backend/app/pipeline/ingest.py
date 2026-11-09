@@ -60,6 +60,40 @@ def _read_parquet(path: str | Path, nrows: int | None) -> pd.DataFrame:
     return pa.Table.from_batches(batches).to_pandas().head(nrows)
 
 
+def merge_frames(frames: list[pd.DataFrame], names: list[str]) -> pd.DataFrame:
+    """Stack several flow files into one frame. All files must share the same columns
+    (order may differ); otherwise a ValueError explains which file differs and how."""
+    base_cols = list(frames[0].columns)
+    base = set(base_cols)
+    for df, name in zip(frames[1:], names[1:]):
+        cols = set(df.columns)
+        if cols != base:
+            missing = sorted(base - cols)[:5]
+            extra = sorted(cols - base)[:5]
+            parts = []
+            if missing:
+                parts.append(f"missing {missing}")
+            if extra:
+                parts.append(f"unexpected {extra}")
+            raise ValueError(
+                f"'{name}' has different columns from '{names[0]}' ({'; '.join(parts)}). "
+                "Files can only be merged when they share the same columns.")
+    return pd.concat([df[base_cols] for df in frames], ignore_index=True)
+
+
+def write_merged(df: pd.DataFrame, stem: Path) -> Path:
+    """Persist a merged dataset as Parquet; fall back to CSV if a column can't be stored."""
+    dest = stem.with_suffix(".parquet")
+    try:
+        df.to_parquet(dest, index=False)
+        return dest
+    except Exception:
+        dest.unlink(missing_ok=True)
+        dest = stem.with_suffix(".csv")
+        df.to_csv(dest, index=False)
+        return dest
+
+
 def read_csv(path: str | Path, nrows: int | None = None) -> pd.DataFrame:
     """Read a flow dataset (CSV or Parquet) robustly: tolerant of bad bytes and stray whitespace."""
     if is_parquet(path):

@@ -106,3 +106,39 @@ def test_upload_parquet(client, sample_csv, tmp_path):
 def test_upload_rejects_other_extensions(client):
     r = client.post("/api/datasets", files={"file": ("data.xlsx", b"x", "application/octet-stream")})
     assert r.status_code == 400
+
+
+def test_upload_multiple_files_merges(client, sample_csv, tmp_path):
+    from app.pipeline import ingest
+
+    df = ingest.read_csv(sample_csv)
+    half = len(df) // 2
+    a, b = tmp_path / "day1.parquet", tmp_path / "day2.csv"
+    df.iloc[:half].to_parquet(a, index=False)
+    df.iloc[half:][list(reversed(df.columns))].to_csv(b, index=False)  # column order may differ
+    with open(a, "rb") as fa, open(b, "rb") as fb:
+        r = client.post("/api/datasets", files=[
+            ("files", ("day1.parquet", fa, "application/octet-stream")),
+            ("files", ("day2.csv", fb, "text/csv")),
+        ])
+    assert r.status_code == 200, r.text
+    ds = r.json()
+    assert ds["profile"]["rows"] == len(df)
+    assert ds["name"] == "day1 + 1 more"
+    client.delete(f"/api/datasets/{ds['id']}")
+
+
+def test_upload_multiple_files_rejects_column_mismatch(client, sample_csv, tmp_path):
+    from app.pipeline import ingest
+
+    df = ingest.read_csv(sample_csv)
+    a, b = tmp_path / "a.parquet", tmp_path / "b.parquet"
+    df.to_parquet(a, index=False)
+    df.drop(columns=[df.columns[-1]]).to_parquet(b, index=False)
+    with open(a, "rb") as fa, open(b, "rb") as fb:
+        r = client.post("/api/datasets", files=[
+            ("files", ("a.parquet", fa, "application/octet-stream")),
+            ("files", ("b.parquet", fb, "application/octet-stream")),
+        ])
+    assert r.status_code == 400
+    assert "different columns" in r.json()["detail"]

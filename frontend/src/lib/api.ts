@@ -395,9 +395,10 @@ export const api = {
   datasets: () => request<Dataset[]>("/api/datasets"),
   dataset: (id: string) => request<Dataset>(`/api/datasets/${id}`),
   preview: (id: string) => request<{ columns: string[]; rows: unknown[][] }>(`/api/datasets/${id}/preview`),
-  upload: (file: File, name?: string) => {
+  /** Upload one or more CSV/Parquet files; several files are merged into one dataset. */
+  upload: (files: File[], name?: string) => {
     const fd = new FormData();
-    fd.append("file", file);
+    for (const f of files) fd.append("files", f);
     if (name) fd.append("name", name);
     return request<Dataset>("/api/datasets", { method: "POST", body: fd });
   },

@@ -39,11 +39,13 @@ export default function DatasetsPage() {
     load();
   }, [load]);
 
-  async function upload(file: File) {
-    setBusy("upload");
+  async function upload(fileList: FileList | null | undefined) {
+    const files = Array.from(fileList ?? []);
+    if (!files.length) return;
+    setBusy(files.length > 1 ? `upload:${files.length}` : "upload");
     setError(null);
     try {
-      const ds = await api.upload(file);
+      const ds = await api.upload(files);
       await load();
       setSelected(ds.id);
     } catch (e) {
@@ -90,7 +92,7 @@ export default function DatasetsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Add dataset</CardTitle>
-              <CardDescription>CSV or Parquet with flow features; IP and timestamp columns enable graph analysis.</CardDescription>
+              <CardDescription>CSV or Parquet with flow features; select several files with the same columns to merge them. IP and timestamp columns enable graph analysis.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
               <div
@@ -102,8 +104,7 @@ export default function DatasetsPage() {
                 onDrop={(e) => {
                   e.preventDefault();
                   setDragging(false);
-                  const f = e.dataTransfer.files[0];
-                  if (f) upload(f);
+                  upload(e.dataTransfer.files);
                 }}
                 onClick={() => fileRef.current?.click()}
                 className={cn(
@@ -111,16 +112,23 @@ export default function DatasetsPage() {
                   dragging ? "border-sky-400 bg-sky-950/30" : "hover:bg-accent/40",
                 )}
               >
-                {busy === "upload" ? <Loader2 className="size-6 animate-spin" /> : <FileUp className="size-6 text-sky-400" />}
-                <div>{busy === "upload" ? "Uploading & validating…" : "Drop a CSV or Parquet file here or click to browse"}</div>
+                {busy?.startsWith("upload") ? <Loader2 className="size-6 animate-spin" /> : <FileUp className="size-6 text-sky-400" />}
+                <div>
+                  {busy === "upload"
+                    ? "Uploading & validating…"
+                    : busy?.startsWith("upload:")
+                      ? `Uploading & merging ${busy.split(":")[1]} files…`
+                      : "Drop CSV or Parquet files here or click to browse"}
+                </div>
+                <div className="text-xs text-muted-foreground">Select several files to merge them into one dataset</div>
                 <input
                   ref={fileRef}
                   type="file"
                   accept=".csv,.parquet,.pq"
+                  multiple
                   className="hidden"
                   onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) upload(f);
+                    upload(e.target.files);
                     e.target.value = "";
                   }}
                 />

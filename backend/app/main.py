@@ -82,21 +82,72 @@ def _register_file(path: Path, name: str, filename: str) -> dict:
     return db.insert_dataset(name, filename, str(path), path.stat().st_size, profile)
 
 
+async def _save_uploads(uploads: list[UploadFile]) -> list[Path]:
+    """Stream uploads to disk, enforcing MAX_UPLOAD_BYTES across all files combined."""
+    saved: list[Path] = []
+    total = 0
+    try:
+        for up in uploads:
+            dest = UPLOAD_DIR / f"{db.new_id()}_{Path(up.filename).name}"
+            saved.append(dest)
+            with open(dest, "wb") as fh:
+                while chunk := await up.read(1 << 20):
+                    total += len(chunk)
+                    if total > MAX_UPLOAD_BYTES:
+                        raise HTTPException(
+                            413, f"Upload exceeds the {MAX_UPLOAD_BYTES // 2**20} MB limit "
+                                 "(all files combined).")
+                    fh.write(chunk)
+    except BaseException:
+        for p in saved:
+            p.unlink(missing_ok=True)
+        raise
+    return saved
+
+
 @app.post("/api/datasets")
-async def upload_dataset(file: UploadFile = File(...), name: str | None = Form(None)):
-    if not file.filename or not file.filename.lower().endswith(ingest.SUPPORTED_EXTENSIONS):
-        raise HTTPException(400, "Please upload a .csv or .parquet file.")
-    dest = UPLOAD_DIR / f"{db.new_id()}_{Path(file.filename).name}"
-    size = 0
-    with open(dest, "wb") as fh:
-        while chunk := await file.read(1 << 20):
-            size += len(chunk)
-            if size > MAX_UPLOAD_BYTES:
-                fh.close()
-                dest.unlink(missing_ok=True)
-                raise HTTPException(413, f"File exceeds {MAX_UPLOAD_BYTES // 2**20} MB limit.")
-            fh.write(chunk)
-    return _register_file(dest, name or Path(file.filename).stem, file.filename)
+async def upload_dataset(
+    file: UploadFile | None = File(None),
+    files: list[UploadFile] | None = File(None),
+    name: str | None = Form(None),
+):
+    """Upload one file (`file`) or several (`files`). Several files are merged into one dataset."""
+    uploads = [u for u in ([file] if file else []) + (files or []) if u is not None]
+    if not uploads:
+        raise HTTPException(400, "No file uploaded.")
+    for up in uploads:
+        if not up.filename or not up.filename.lower().endswith(ingest.SUPPORTED_EXTENSIONS):
+            raise HTTPException(400, f"'{up.filename}' is not a .csv or .parquet file.")
+    filenames = [up.filename for up in uploads]
+    if len(set(filenames)) != len(filenames):
+        raise HTTPException(400, "The same file was selected more than once.")
+
+    paths = await _save_uploads(uploads)
+    if len(paths) == 1:
+        return _register_file(paths[0], name or Path(filenames[0]).stem, filenames[0])
+
+    try:
+        frames = []
+        for p, fn in zip(paths, filenames):
+            try:
+                frames.append(ingest.read_csv(p))
+            except Exception as exc:
+                kind = "Parquet" if ingest.is_parquet(p) else "CSV"
+                raise HTTPException(400, f"Could not parse {kind} '{fn}': {exc}")
+        try:
+            df = ingest.merge_frames(frames, filenames)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+        del frames
+        dest = ingest.write_merged(df, UPLOAD_DIR / f"{db.new_id()}_merged_{len(paths)}_files")
+        del df
+    finally:
+        for p in paths:
+            p.unlink(missing_ok=True)
+
+    default_name = f"{Path(filenames[0]).stem} + {len(filenames) - 1} more"
+    ds = _register_file(dest, name or default_name, ", ".join(filenames))
+    return ds
 
 
 class SampleRequest(BaseModel):

@@ -23,7 +23,7 @@ Network flows ─► Isolation Forest ─► DBSCAN ─► NetworkX relationship
 
 | Module | What it does |
 |---|---|
-| **1 · Ingestion & preprocessing** | CSV or Parquet upload with validation, automatic detection of IP / port / protocol / timestamp / label columns, inf & missing-value handling, constant/duplicate column removal, dataset statistics and preview |
+| **1 · Ingestion & preprocessing** | CSV or Parquet upload (several files with the same columns can be merged into one dataset) with validation, automatic detection of IP / port / protocol / timestamp / label columns, inf & missing-value handling, constant/duplicate column removal, dataset statistics and preview |
 | **2 · Anomaly detection & clustering** | Isolation Forest anomaly scores and flags; DBSCAN behavioural clusters with automatic `eps` selection, cluster profiles and distinctive features |
 | **3 · Graph & community analysis** | NetworkX graph of IPs with observed *communication* edges and inferred *coordination* edges; Louvain communities ranked by an evidence-based priority score |
 | **4 · Interactive visualisation** | Landing page, Mission Control dashboard, Cytoscape.js threat graph (filter by community/tier, search IPs, inspect nodes & edges), Recharts analytics |
@@ -147,7 +147,7 @@ To point the UI at a different API address, create `frontend/.env.local` with
 
 ## Usage
 
-1. **Datasets & Runs** → upload a CSV or Parquet file, or click *Generate synthetic demo dataset*.
+1. **Datasets & Runs** → upload one or more CSV or Parquet files (several files are merged into one dataset), or click *Generate synthetic demo dataset*.
 2. Review the dataset profile (detected columns, data quality, label distribution, feature statistics).
 3. Adjust pipeline parameters if needed and click **Run pipeline**. Stage-by-stage progress is shown live.
 4. Explore the run workspace:
@@ -212,7 +212,7 @@ Interactive documentation: http://localhost:8000/docs
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| `POST` | `/api/datasets` | Upload and validate a CSV or Parquet file |
+| `POST` | `/api/datasets` | Upload and validate one CSV or Parquet file (`file`) or several to merge (`files`) |
 | `POST` | `/api/datasets/sample` | Generate the synthetic demo dataset |
 | `GET` | `/api/datasets`, `/api/datasets/{id}`, `/api/datasets/{id}/preview` | List, profile and preview datasets |
 | `POST` | `/api/runs` | Start a pipeline run |
