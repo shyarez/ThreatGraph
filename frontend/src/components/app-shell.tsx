@@ -9,7 +9,7 @@ import { api } from "@/lib/api";
 import { SatelliteIcon } from "@/components/space-art";
 
 const NAV = [
-  { href: "/", label: "Mission Control", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Mission Control", icon: LayoutDashboard },
   { href: "/datasets", label: "Datasets & Runs", icon: Database },
   { href: "/history", label: "Investigation Log", icon: History },
 ];
@@ -25,6 +25,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => clearInterval(t);
   }, []);
 
+  // The landing page is full-bleed with its own top bar; the app pages get the sidebar.
+  if (pathname === "/") return <>{children}</>;
+
   return (
     <div className="flex min-h-screen">
       <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar backdrop-blur-xl max-md:hidden">
@@ -37,7 +40,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Link>
         <nav className="flex flex-col gap-1.5 px-3">
           {NAV.map(({ href, label, icon: Icon }) => {
-            const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+            const active = pathname.startsWith(href);
             return (
               <Link
                 key={href}

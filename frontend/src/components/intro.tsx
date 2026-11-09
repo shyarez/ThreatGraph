@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SpaceBackground } from "@/components/space-background";
 
 /**
  * Landing intro shown on every full page load: orbital rings sweep in, the title
@@ -69,11 +70,19 @@ export function Intro() {
 
   return (
     <div
-      className="tg-intro fixed inset-0 z-[100] flex cursor-pointer items-center justify-center overflow-hidden bg-[radial-gradient(ellipse_at_center,rgba(2,3,10,0.55),#02030a_70%)]"
+      className="tg-intro fixed inset-0 z-[100] flex cursor-pointer items-center justify-center overflow-hidden bg-[#02030a]"
       style={leaving ? { animation: "intro-exit 0.65s ease-in forwards" } : undefined}
       onClick={finish}
       role="presentation"
     >
+      {/* its own opaque night sky: stars + a faint Milky Way band */}
+      <SpaceBackground />
+      <div
+        className="pointer-events-none absolute left-1/2 top-1/2 h-[42vh] w-[170vw] -translate-x-1/2 -translate-y-1/2 -rotate-[22deg] bg-[radial-gradient(ellipse_at_center,rgba(150,180,230,0.17),rgba(90,110,170,0.07)_40%,transparent_70%)] blur-2xl"
+        style={{ animation: "intro-zoom 2.4s ease-out both" }}
+      />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(2,3,10,0.85))]" />
+
       {/* sweeping scan line */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-transparent via-[#7dd3fc]/10 to-transparent"
@@ -81,7 +90,7 @@ export function Intro() {
       />
 
       {/* orbital rings */}
-      <svg viewBox="-200 -200 400 400" className="pointer-events-none absolute size-[min(92vw,640px)]" aria-hidden>
+      <svg viewBox="-200 -200 400 400" className="pointer-events-none absolute z-10 size-[min(92vw,640px)]" aria-hidden>
         <g style={{ animation: "intro-ring 2.2s cubic-bezier(0.2,0.7,0.2,1) both", transformOrigin: "0 0" }}>
           <circle r="190" fill="none" stroke="rgba(148,190,230,0.22)" strokeDasharray="1 7" />
           <circle r="150" fill="none" stroke="rgba(148,190,230,0.35)" strokeDasharray="60 14 4 14" />
@@ -93,7 +102,7 @@ export function Intro() {
         </g>
       </svg>
 
-      <div className="relative flex flex-col items-center px-6 text-center">
+      <div className="relative z-10 flex flex-col items-center px-6 text-center">
         <div
           className="mb-6 h-px w-[min(70vw,420px)] origin-center bg-gradient-to-r from-transparent via-[#7dd3fc] to-transparent"
           style={{ animation: "intro-line 0.9s ease-out 0.3s both" }}
@@ -132,7 +141,7 @@ export function Intro() {
           e.stopPropagation();
           finish();
         }}
-        className="absolute bottom-6 right-6 font-display text-[10px] uppercase tracking-[0.3em] text-[#7d8aa0] transition-colors hover:text-white"
+        className="absolute bottom-6 right-6 z-10 font-display text-[10px] uppercase tracking-[0.3em] text-[#7d8aa0] transition-colors hover:text-white"
       >
         Skip ›
       </button>
